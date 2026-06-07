@@ -10,12 +10,16 @@ class User(AbstractUser):
         ('waiter', 'Официант'),
         ('chef', 'Повар'),
         ('auditor', 'Аудитор'),
+        ('client', 'Клиент'),
     ]
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='cashier')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client')
     restaurant = models.ForeignKey('restaurants.Restaurant', on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     last_login_pos = models.DateTimeField(null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    avatar = models.ImageField(upload_to='accounts/avatars/', blank=True)
+    is_active = models.BooleanField(default=True)
 
 class Session(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
