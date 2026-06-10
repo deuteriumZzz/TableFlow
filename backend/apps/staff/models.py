@@ -1,6 +1,6 @@
 from django.db import models
-from accounts.models import User
-from restaurants.models import Restaurant
+from apps.accounts.models import User
+from apps.restaurants.models import Restaurant
 
 class StaffSchedule(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

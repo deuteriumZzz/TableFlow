@@ -1,5 +1,5 @@
 from django.db import models
-from orders.models import Order
+from apps.orders.models import Order
 
 class PaymentMethod(models.Model):
     name = models.CharField(max_length=50)
