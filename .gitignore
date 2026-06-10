@@ -9,6 +9,7 @@ __pycache__/
 dist/
 build/
 .mypy_cache/
+.claude/
 
 # Django
 backend/db.sqlite3
@@ -27,3 +28,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+.env
