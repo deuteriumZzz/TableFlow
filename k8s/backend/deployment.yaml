@@ -26,14 +26,14 @@ spec:
                 name: backend-secret
           readinessProbe:
             httpGet:
-              path: /api/auth/token/
+              path: /api/health/
               port: 8000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /api/auth/token/
+              path: /api/health/
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 30
