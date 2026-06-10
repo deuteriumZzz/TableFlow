@@ -13,4 +13,4 @@ class BaseRestaurantFilter(django_filters.FilterSet):
     """
 
     class Meta:
-        abstract = True
+        pass

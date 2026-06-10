@@ -71,7 +71,7 @@ class Order(models.Model):
         return f"#{self.id} - {self.status} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
     def recalculate_total(self):
-        """Recompute total_amount from current items and persist."""
+        """Recompute total_amount from item subtotals. Does not apply discount or tax."""
         self.total_amount = sum(item.total_price for item in self.items.all())
         self.save(update_fields=['total_amount'])
 

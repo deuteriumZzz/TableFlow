@@ -43,6 +43,16 @@ class Command(BaseCommand):
             )
             self.stdout.write('  User: manager / manager123 (manager)')
 
+        if not User.objects.filter(username='cashier').exists():
+            User.objects.create_user(
+                username='cashier',
+                email='cashier@example.com',
+                password='cashier123',
+                role='cashier',
+                restaurant=restaurant,
+            )
+            self.stdout.write('  User: cashier / cashier123 (cashier)')
+
         if not User.objects.filter(username='waiter').exists():
             User.objects.create_user(
                 username='waiter',

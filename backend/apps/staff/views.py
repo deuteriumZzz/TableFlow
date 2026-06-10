@@ -15,3 +15,6 @@ class StaffSalaryViewSet(viewsets.ModelViewSet):
     queryset = StaffSalary.objects.all()
     serializer_class = StaffSalarySerializer
     permission_classes = [permissions.IsAuthenticated, IsManagerOrAdmin]
+
+    def get_queryset(self):
+        return self.queryset.filter(user__restaurant=self.request.user.restaurant)

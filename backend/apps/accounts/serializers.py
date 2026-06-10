@@ -1,3 +1,4 @@
+from django.contrib.auth.password_validation import validate_password as django_validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
@@ -25,6 +26,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'first_name', 'last_name', 'phone']
+
+    def validate_password(self, value):
+        django_validate_password(value)
+        return value
 
     def create(self, validated_data):
         return User.objects.create_user(
