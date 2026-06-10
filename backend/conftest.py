@@ -55,6 +55,12 @@ def admin_client(api_client, admin_user):
 
 
 @pytest.fixture
+def manager_client(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    return api_client
+
+
+@pytest.fixture
 def waiter_client(api_client, waiter_user):
     api_client.force_authenticate(user=waiter_user)
     return api_client
@@ -70,7 +76,7 @@ def table(db, restaurant):
 @pytest.fixture
 def category(db, restaurant):
     return Category.objects.create(
-        name='Main dishes', restaurant=restaurant, is_active=True, sort_order=1
+        name='Test Category', restaurant=restaurant, is_active=True, sort_order=1
     )
 
 
