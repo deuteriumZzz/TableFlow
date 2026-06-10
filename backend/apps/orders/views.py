@@ -3,13 +3,19 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import Order, OrderItem, OrderItemModifier
 from .serializers import OrderSerializer, OrderCreateSerializer, AddItemSerializer
+from .filters import OrderFilter
 from apps.menu.models import Product, Modifier
 from apps.tables.models import Table
+from apps.api.pagination import StandardPagination
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = StandardPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = OrderFilter
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -17,13 +23,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         return OrderSerializer
 
     def get_queryset(self):
-        qs = Order.objects.filter(
+        return Order.objects.filter(
             restaurant=self.request.user.restaurant
         ).prefetch_related('items__product', 'items__modifiers')
-        order_status = self.request.query_params.get('status')
-        if order_status:
-            qs = qs.filter(status=order_status)
-        return qs
 
     def create(self, request, *args, **kwargs):
         serializer = OrderCreateSerializer(data=request.data, context={'request': request})
