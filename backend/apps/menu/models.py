@@ -34,6 +34,7 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Обновлено"))
     min_stock = models.PositiveIntegerField(default=0, verbose_name=_("Минимальный остаток"))
     current_stock = models.PositiveIntegerField(default=0, verbose_name=_("Текущий остаток"))
+    modifiers = models.ManyToManyField('Modifier', through='ProductModifier', blank=True, verbose_name=_('Модификаторы'))
 
     class Meta:
         verbose_name = _("Товар")

@@ -1,22 +1,22 @@
-from rest_framework import viewsets, permissions, generics
+from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import UserSerializer, CustomTokenSerializer
+from .serializers import UserSerializer, CustomTokenObtainPairSerializer
 from .models import User
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenSerializer
+    serializer_class = CustomTokenObtainPairSerializer
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_permissions(self):
-        if self.action in ['retrieve', 'update', 'partial_update']:
-            return [permissions.IsAuthenticated()]
-        return super().get_permissions()
-
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return User.objects.all()
+        if self.request.user.role in ('admin', 'manager'):
+            return User.objects.filter(restaurant=self.request.user.restaurant)
         return User.objects.filter(id=self.request.user.id)
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        return Response(UserSerializer(request.user).data)
