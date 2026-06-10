@@ -72,7 +72,9 @@ class Order(models.Model):
 
     def recalculate_total(self):
         """Recompute total_amount from item subtotals. Does not apply discount or tax."""
-        self.total_amount = sum(item.total_price for item in self.items.all())
+        from django.db.models import Sum
+        result = OrderItem.objects.filter(order=self).aggregate(total=Sum('total_price'))
+        self.total_amount = result['total'] or 0
         self.save(update_fields=['total_amount'])
 
 

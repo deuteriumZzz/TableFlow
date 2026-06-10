@@ -72,6 +72,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             OrderItemModifier.objects.create(order_item=item, modifier=m, quantity=1)
 
         order.recalculate_total()
+        order = Order.objects.prefetch_related('items__product', 'items__modifiers').get(pk=order.pk)
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=['delete'], url_path=r'remove_item/(?P<item_id>[^/.]+)')
@@ -80,6 +81,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         item = get_object_or_404(OrderItem, id=item_id, order=order)
         item.delete()
         order.recalculate_total()
+        order = Order.objects.prefetch_related('items__product', 'items__modifiers').get(pk=order.pk)
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])

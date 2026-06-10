@@ -37,18 +37,13 @@ class TestOrderAddItem:
         return resp.data['id']
 
     def test_add_item_increases_total(self, waiter_client, table, product):
-        from apps.orders.models import OrderItem
         order_id = self._create_order(waiter_client, table)
         resp = waiter_client.post(
             f'{self.ORDERS_URL}{order_id}/add_item/',
             {'product_id': product.id, 'quantity': 2},
         )
         assert resp.status_code == 200
-        # The view's recalculate_total runs on a prefetch-cached order object,
-        # so the DB total_amount stays 0. Verify the item itself was created
-        # with the correct total_price.
-        item = OrderItem.objects.get(order_id=order_id, product=product)
-        assert float(item.total_price) == float(product.price) * 2
+        assert float(resp.data['total_amount']) == float(product.price) * 2
 
     def test_add_item_to_delivered_order_fails(self, waiter_client, table, product):
         order_id = self._create_order(waiter_client, table)
@@ -81,22 +76,18 @@ class TestOrderRemoveItem:
     ORDERS_URL = '/api/orders/'
 
     def test_remove_item_decreases_total(self, waiter_client, table, product):
-        from apps.orders.models import OrderItem
         resp = waiter_client.post(self.ORDERS_URL, {'table': table.id})
         order_id = resp.data['id']
-        waiter_client.post(
+        add_resp = waiter_client.post(
             f'{self.ORDERS_URL}{order_id}/add_item/',
             {'product_id': product.id, 'quantity': 1},
         )
-        # Fetch the item directly from DB since add_item response items list
-        # may be empty due to stale prefetch cache.
-        item_id = OrderItem.objects.get(order_id=order_id, product=product).id
+        item_id = add_resp.data['items'][0]['id']
         del_resp = waiter_client.delete(
             f'{self.ORDERS_URL}{order_id}/remove_item/{item_id}/'
         )
         assert del_resp.status_code == 200
-        # After remove, the item no longer exists in the DB.
-        assert not OrderItem.objects.filter(id=item_id).exists()
+        assert float(del_resp.data['total_amount']) == 0.0
 
 
 @pytest.mark.django_db
