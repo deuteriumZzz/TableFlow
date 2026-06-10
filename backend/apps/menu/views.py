@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 from .models import Product, Category, Modifier
 from .serializers import ProductSerializer, CategorySerializer, ModifierSerializer
-from .permissions import IsStaffOrReadOnly
+from apps.api.permissions import IsStaffOrReadOnly
 
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer

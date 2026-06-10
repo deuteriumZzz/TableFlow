@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 from .models import StaffSchedule, StaffSalary
 from .serializers import StaffScheduleSerializer, StaffSalarySerializer
-from .permissions import IsManagerOrAdmin
+from apps.api.permissions import IsManagerOrAdmin
 
 class StaffScheduleViewSet(viewsets.ModelViewSet):
     queryset = StaffSchedule.objects.all()
