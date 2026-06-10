@@ -69,8 +69,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         for m in modifiers:
             OrderItemModifier.objects.create(order_item=item, modifier=m, quantity=1)
 
-        order.total_amount = sum(i.total_price for i in order.items.all())
-        order.save()
+        order.recalculate_total()
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=['delete'], url_path=r'remove_item/(?P<item_id>[^/.]+)')
@@ -78,8 +77,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         item = get_object_or_404(OrderItem, id=item_id, order=order)
         item.delete()
-        order.total_amount = sum(i.total_price for i in order.items.all())
-        order.save()
+        order.recalculate_total()
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
