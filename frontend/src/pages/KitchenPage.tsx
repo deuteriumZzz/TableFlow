@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getOrders, updateOrderStatus } from '../api/orders'
+import { useAuthStore } from '../store/authStore'
 import type { Order, OrderStatus } from '../types'
 
 const KITCHEN_STATUSES: OrderStatus[] = ['created', 'in_progress', 'ready']
@@ -38,7 +39,11 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
 export default function KitchenPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [connected, setConnected] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
 
   const load = async () => {
     try {
@@ -49,10 +54,36 @@ export default function KitchenPage() {
     }
   }
 
+  const connectWs = () => {
+    if (!user?.restaurant) return
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const host = (import.meta as any).env?.VITE_WS_HOST ?? window.location.host
+    const ws = new WebSocket(`${protocol}://${host}/ws/orders/${user.restaurant}/`)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      setConnected(true)
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
+    }
+    ws.onmessage = () => load()
+    ws.onclose = () => {
+      setConnected(false)
+      reconnectTimer.current = setTimeout(connectWs, 3000)
+    }
+    ws.onerror = () => ws.close()
+  }
+
   useEffect(() => {
     load()
-    const interval = setInterval(load, 15000)
-    return () => clearInterval(interval)
+    connectWs()
+    // Fallback poll at 30s when WebSocket is unavailable
+    const poll = setInterval(load, 30_000)
+    return () => {
+      clearInterval(poll)
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
+      wsRef.current?.close()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const advance = async (order: Order) => {
@@ -66,14 +97,16 @@ export default function KitchenPage() {
     <div className="min-h-screen bg-gray-900 text-white">
       <header className="px-6 py-4 bg-gray-800 flex items-center justify-between">
         <h1 className="text-xl font-bold">Кухня — TableFlow</h1>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            connected ? 'bg-green-700 text-green-100' : 'bg-yellow-700 text-yellow-100'
+          }`}>
+            {connected ? 'live' : 'polling'}
+          </span>
           <button onClick={load} className="text-sm text-gray-400 hover:text-white">
             Обновить
           </button>
-          <button
-            onClick={() => navigate('/')}
-            className="text-sm text-gray-400 hover:text-white"
-          >
+          <button onClick={() => navigate('/')} className="text-sm text-gray-400 hover:text-white">
             ← Назад
           </button>
         </div>
@@ -98,33 +131,23 @@ export default function KitchenPage() {
                     <p className="text-gray-500 text-sm text-center py-4">Пусто</p>
                   )}
                   {colOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className={`rounded-xl border p-4 ${COLUMN_COLOR[col]}`}
-                    >
+                    <div key={order.id} className={`rounded-xl border p-4 ${COLUMN_COLOR[col]}`}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold text-gray-800">
-                          {order.table_number
-                            ? `Стол #${order.table_number}`
-                            : 'Без стола'}
+                          {order.table_number ? `Стол #${order.table_number}` : 'Без стола'}
                         </span>
                         <span className="text-xs text-gray-500">#{order.id}</span>
                       </div>
                       <ul className="space-y-1 mb-3">
                         {order.items.map((item) => (
-                          <li
-                            key={item.id}
-                            className="text-sm text-gray-700 flex justify-between"
-                          >
+                          <li key={item.id} className="text-sm text-gray-700 flex justify-between">
                             <span>{item.product.name}</span>
                             <span className="font-medium">×{item.quantity}</span>
                           </li>
                         ))}
                       </ul>
                       {order.comment && (
-                        <p className="text-xs text-gray-500 italic mb-2">
-                          {order.comment}
-                        </p>
+                        <p className="text-xs text-gray-500 italic mb-2">{order.comment}</p>
                       )}
                       <button
                         onClick={() => advance(order)}

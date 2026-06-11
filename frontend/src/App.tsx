@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage'
 import TablesPage from './pages/TablesPage'
 import POSPage from './pages/POSPage'
 import KitchenPage from './pages/KitchenPage'
+import ReservationPage from './pages/ReservationPage'
 
 export default function App() {
   const loadUser = useAuthStore((s) => s.loadUser)
@@ -41,6 +42,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <KitchenPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reservations"
+          element={
+            <PrivateRoute>
+              <ReservationPage />
             </PrivateRoute>
           }
         />

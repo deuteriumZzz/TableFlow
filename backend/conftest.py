@@ -95,3 +95,26 @@ def product(db, restaurant, category):
 @pytest.fixture
 def payment_method(db):
     return PaymentMethod.objects.create(name='Cash')
+
+
+@pytest.fixture
+def restaurant_b(db):
+    return Restaurant.objects.create(name='Other Restaurant', is_active=True)
+
+
+@pytest.fixture
+def table_b(db, restaurant_b):
+    return Table.objects.create(
+        restaurant=restaurant_b, number=1, capacity=4, status='free'
+    )
+
+
+@pytest.fixture
+def admin_client_b(db, restaurant_b):
+    user = User.objects.create_user(
+        username='admin_b', password='pass123',
+        role='admin', restaurant=restaurant_b,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client

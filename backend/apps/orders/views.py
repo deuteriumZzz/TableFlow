@@ -1,15 +1,40 @@
+import logging
 from decimal import Decimal
+
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.db import models as db_models
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+
 from .models import Order, OrderItem, OrderItemModifier
 from .serializers import OrderSerializer, OrderCreateSerializer, AddItemSerializer
 from .filters import OrderFilter
 from apps.menu.models import Product, Modifier
-from apps.tables.models import Table
 from apps.api.pagination import StandardPagination
+
+logger = logging.getLogger(__name__)
+
+
+def _broadcast_order_update(order):
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'orders_{order.restaurant_id}',
+            {
+                'type': 'order_update',
+                'order_id': order.id,
+                'status': order.status,
+            },
+        )
+    except Exception:
+        logger.warning('WebSocket broadcast failed for order %d', order.id)
+
+ITEM_STATUS_CHOICES = ('pending', 'in_progress', 'ready', 'delivered', 'cancelled')
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -50,8 +75,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         product = get_object_or_404(
             Product, id=data['product_id'],
-            restaurant=request.user.restaurant, is_active=True
+            restaurant=request.user.restaurant, is_active=True,
         )
+
+        if product.status == 'out_of_stock':
+            return Response(
+                {'error': 'Товар отсутствует в наличии'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if product.current_stock > 0 and product.current_stock < data['quantity']:
+            return Response(
+                {'error': f'Недостаточно товара. Доступно: {product.current_stock}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         modifier_price = Decimal('0')
         modifiers = []
         for mid in data.get('modifier_ids', []):
@@ -70,6 +108,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         for m in modifiers:
             OrderItemModifier.objects.create(order_item=item, modifier=m, quantity=1)
+
+        # Списываем остаток если продукт отслеживается (current_stock > 0)
+        if product.current_stock > 0:
+            Product.objects.filter(pk=product.pk).update(
+                current_stock=db_models.F('current_stock') - data['quantity']
+            )
+            logger.debug('Stock decremented: product=%d qty=%d', product.pk, data['quantity'])
 
         order.recalculate_total()
         order = Order.objects.prefetch_related('items__product', 'items__modifiers').get(pk=order.pk)
@@ -102,4 +147,20 @@ class OrderViewSet(viewsets.ModelViewSet):
                 order.table.status = 'free'
                 order.table.save()
         order.save()
+        _broadcast_order_update(order)
+        return Response(OrderSerializer(order).data)
+
+    @action(detail=True, methods=['post'], url_path=r'item_status/(?P<item_id>[^/.]+)')
+    def update_item_status(self, request, pk=None, item_id=None):
+        order = self.get_object()
+        item = get_object_or_404(OrderItem, id=item_id, order=order)
+        new_status = request.data.get('status')
+        if new_status not in ITEM_STATUS_CHOICES:
+            return Response(
+                {'error': f'Допустимые статусы позиции: {ITEM_STATUS_CHOICES}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        item.status = new_status
+        item.save(update_fields=['status'])
+        order = Order.objects.prefetch_related('items__product', 'items__modifiers').get(pk=order.pk)
         return Response(OrderSerializer(order).data)

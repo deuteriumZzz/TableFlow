@@ -22,7 +22,7 @@ class SalesReportView(APIView):
         else:
             report_date = timezone.now().date()
 
-        data = generate_sales_report(report_date)
+        data = generate_sales_report(report_date, restaurant=request.user.restaurant)
         serializer = SalesReportSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
@@ -41,7 +41,7 @@ class ProductReportView(APIView):
         else:
             report_date = timezone.now().date()
 
-        data = generate_product_report(product_id, report_date)
+        data = generate_product_report(product_id, report_date, restaurant=request.user.restaurant)
         serializer = ProductReportSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
